@@ -57,26 +57,18 @@ def generate_node(state: RAGState) -> RAGState:
 
 
 def validate_node(state: RAGState) -> RAGState:
-    answer = state["answer_text"]
-    refusal_phrase = "I don't have enough information in the provided documents"
+    from src.citation_validator import validate_citations, REFUSAL_PHRASE
 
-    if refusal_phrase in answer:
+    answer = state["answer_text"]
+
+    if REFUSAL_PHRASE in answer:
         state["valid"] = True
         state["abstained"] = True
         return state
 
-    # Check every sentence-ending citation marker [n] is in valid range
-    import re
-    citations = [int(n) for n in re.findall(r"\[(\d+)\]", answer)]
-    num_contexts = len(state["contexts"])
-
-    if not citations:
-        state["valid"] = False
-    elif any(c < 1 or c > num_contexts for c in citations):
-        state["valid"] = False
-    else:
-        state["valid"] = True
-
+    result = validate_citations(answer, num_contexts=len(state["contexts"]))
+    state["valid"] = result["valid"]
+    state["validation_errors"] = result["errors"]
     state["abstained"] = False
     return state
 
